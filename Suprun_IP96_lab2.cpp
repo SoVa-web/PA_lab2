@@ -33,7 +33,7 @@ class Algorithm{
    void placingAnts();
    void algorithm();
    int probability(int i, vector<int> j);
-   double tau(int minL, int optL, bool elit);
+   double tau( int optL, bool elit);
 
    
    //variaties 
@@ -45,14 +45,13 @@ double minL;
  int numberAnts;
  Ant* ants;
  int* placeAnts;
+ vector<int>way0;
  double alpha = 3;//
  double beta = 2;//
  double evaporate = 0.7;//коефіцієнт випаровування
  double tauStart = 1;//початковий рівень феромону
  int eliteAnts = 10;
  int traditionalAnts = 35;
-double pheromonsByOne = 5;
-double pheromonsByElite = 10;
 const int iter = 10;
 };
 
@@ -62,7 +61,7 @@ Algorithm::Algorithm(Ant ant, int number){
   generDistances();
   initPheramons();
   initVision();
-  output();
+  //output();
   numberAnts = eliteAnts+traditionalAnts;
   greedySearch();
   ants = new Ant[numberAnts];
@@ -79,8 +78,8 @@ void Algorithm::algorithm(){
       for(int j =0; j < numberAnts; j++){//cycle for ants
            vector<int> nodes;
            bool visited[numberNodes];
-           for(int j =0; j < numberNodes; j++){
-              visited[i] = true;
+           for(int k =0; k < numberNodes; k++){
+              visited[k] = true;
            }
             int next = 0;
             visited[next] = false;
@@ -100,15 +99,44 @@ void Algorithm::algorithm(){
     }
     ants[j].optL+=distanceMatrix[ants[j].way.size()-1][0];
     ants[j].way.push_back(ants[j].way[0]);
-      ants[j].deltaTau = tau(minL, ants[j].optL, ants[j].areYouElyte);
+      ants[j].deltaTau = tau( ants[j].optL, ants[j].areYouElyte);
       }//end cycle of  ants
+      int L = ants[0].optL;
+      int index = 0;
+      for(int k =0; k < numberAnts; k++){
+          if(L>=ants[k].optL){
+              L=ants[k].optL;
+              index = k;
+          }
+      }
+      way0 = ants[index].way;
+      minL = L;
+      int sumTau = 0;
+      for(int k =0; k < numberAnts; k++){
+          sumTau+=ants[k].deltaTau;
+      }
+      for(int j =0; j <numberNodes; j++){
+          for(int k =0; k < numberNodes; k++){
+             if(j!=k){
+                 pheramonsMatrix[j][k] = (1-evaporate)*pheramonsMatrix[j][k]+sumTau;
+             }
+          }
+      }
       //оновлення параметрів
+      for(int k =0; k < numberAnts; k++){
+           ants[k].way.clear();
+      }
    }
+   cout<<"minLFinl: "<<minL;
 }
 
-double Algorithm::tau(int minL, int optL, bool elit ){
+double Algorithm::tau( int optL, bool elit ){
     double delta =0;
-
+    if(elit){
+        delta = (2*this->minL)/optL;
+    }else{
+        delta = this->minL/optL;
+    }
     return delta;
 }
 
@@ -119,7 +147,8 @@ int Algorithm::probability(int i, vector<int> j){
  }
  vector<double> prob;
  for(int k =0; k < j.size(); k++){
-     int a = (pow(pheramonsMatrix[i][j[k]], alpha )*pow(visionMaxtrix[i][j[k]], beta))/sum;
+     double a = (pow(pheramonsMatrix[i][j[k]], alpha )*pow(visionMaxtrix[i][j[k]], beta))/sum;
+    prob.push_back(a);
  }
  double b = prob[0];
  int maximum = 0; 
@@ -158,6 +187,7 @@ void Algorithm::initPheramons(){
         for(int j=0; j < numberNodes; j++){
             pheramonsMatrix[i][j] =1+ rand()%10;
             pheramonsMatrix[i][j]/=10;
+            pheramonsMatrix[j][i]/=10;
             if(i == j){
                  pheramonsMatrix[i][j]=0;
             }
@@ -180,12 +210,12 @@ void Algorithm::initVision(){
             }
         }
     }
-    for(int i =0; i < numberNodes; i++){
+    /*for(int i =0; i < numberNodes; i++){
         for(int j=0; j < numberNodes; j++){ 
             cout<<setw(10)<<visionMaxtrix[i][j]<<" ";
         }
         cout<<endl;
-    }
+    }*/
 }
 
 void Algorithm::generDistances(){
@@ -210,7 +240,6 @@ void Algorithm::output(){
 
 void Algorithm::greedySearch(){
     this->minL = 0;
-    vector<int> way;
     vector<int> nodes;
     bool visited[numberNodes];
     for(int i =0; i<numberNodes; i++){
@@ -218,8 +247,8 @@ void Algorithm::greedySearch(){
     }
     int next = 0;
     visited[next] = false;
-    way.push_back(next);
-    while (way.size()<numberNodes){
+    way0.push_back(next);
+    while (way0.size()<numberNodes){
         for(int i =0; i < numberNodes; i++){
             if(next != i && visited[i] ){
               nodes.push_back(i);
@@ -235,23 +264,23 @@ void Algorithm::greedySearch(){
        }
        next =k;
         visited[next] = false;
-        way.push_back(next);
-        minL+=distanceMatrix[way.size()-2][way.size()-1];
+        way0.push_back(next);
+        minL+=distanceMatrix[way0.size()-2][way0.size()-1];
         nodes.clear();
     }
-    minL+=distanceMatrix[way.size()-1][0];
-    way.push_back(way[0]);
+    minL+=distanceMatrix[way0.size()-1][0];
+    way0.push_back(way0[0]);
     cout<<"Lmin"<<minL<<endl;
     cout<<"Way: ";
-    for(int i =0 ;i < way.size(); i++){
-        cout<<way[i]<<"-->";
+    for(int i =0 ;i < way0.size(); i++){
+        cout<<way0[i]<<"-->";
     }
-    way.clear();
 }
 
 
 int main(){
   Ant ant;
-  Algorithm algo(ant, 46);
+  Algorithm algo(ant, 300);
   algo.placingAnts();
+  algo.algorithm();
 }
