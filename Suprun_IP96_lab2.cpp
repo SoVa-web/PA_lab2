@@ -15,25 +15,24 @@ class Graph{
    void initMatrix();
    void initPheramons();
    void generDistances();
+   void initVision();
    void output();
 
 //variaties 
 int numberNodes;
 int** distanceMatrix;
 double** pheramonsMatrix;
+double** visionMaxtrix;
 };
 
 class Ant{
 public:
 //functions
- Ant();
+ Ant(){};
 
 //variaties
 vector<int>nodesTaboo;
-};
-
-class ColonAnts{
-public:
+ bool areYouElyte;
  double alpha = 3;//
  double beta = 2;//
  double evaporate = 0.7;//коефіцієнт випаровування
@@ -44,21 +43,36 @@ double pheromonsByOne = 5;
 double pheromonsByElite = 10;
 };
 
+
 class AntAlgorithm{
 public:
 //func
-AntAlgorithm(Graph graph);
+AntAlgorithm(Graph graph,  int number);
+AntAlgorithm(Ant ant);
 void greedySearch();
 //var
 double optimL;
 double minL;
 Graph graph;
+ int numberAnts;
+ Ant* ants;
 };
 
 
-AntAlgorithm::AntAlgorithm(Graph graph){
+AntAlgorithm::AntAlgorithm(Graph graph,  int number){
 this->graph = graph;
+numberAnts = number;
 greedySearch();
+}
+
+AntAlgorithm::AntAlgorithm(Ant ant){
+ants = new Ant[numberAnts];
+ for(int i =1; i < numberAnts+1; i++){
+   if(numberAnts-ant.eliteAnts)
+     ants[i-1].areYouElyte  = false;
+    else
+     ants[i-1].areYouElyte  = true;
+  }
 }
 
 void AntAlgorithm::greedySearch(){
@@ -106,6 +120,8 @@ Graph::Graph(int number){
   numberNodes = number;
   initMatrix();
   generDistances();
+  initPheramons();
+  initVision();
   output();
 }
 
@@ -122,6 +138,38 @@ void Graph::initPheramons(){
     pheramonsMatrix = new double*[numberNodes];
     for(int i =0; i < numberNodes; i++){
         pheramonsMatrix[i] = new double[numberNodes];
+    }
+    for(int i =0; i < numberNodes; i++){
+        for(int j=0; j < numberNodes; j++){
+            pheramonsMatrix[i][j] =1+ rand()%10;
+            pheramonsMatrix[i][j]/=10;
+            if(i == j){
+                 pheramonsMatrix[i][j]=0;
+            }
+        }
+    }
+}
+
+void Graph::initVision(){
+    srand(time(NULL));
+    visionMaxtrix = new double*[numberNodes];
+    for(int i =0; i < numberNodes; i++){
+       visionMaxtrix[i] = new double[numberNodes];
+    }
+    for(int i =0; i < numberNodes; i++){
+        for(int j=0; j < numberNodes; j++){ 
+            if(i != j){
+                visionMaxtrix[i][j] = 1.0/distanceMatrix[i][j];
+            }else{
+                 visionMaxtrix[i][j]=0;
+            }
+        }
+    }
+    for(int i =0; i < numberNodes; i++){
+        for(int j=0; j < numberNodes; j++){ 
+            cout<<setw(10)<<visionMaxtrix[i][j]<<" ";
+        }
+        cout<<endl;
     }
 }
 
@@ -147,5 +195,8 @@ void Graph::output(){
 
 int main(){
   Graph graph(7);
-  AntAlgorithm algorithm(graph);
+  Ant ant;
+  int numberAnts = ant.traditionalAnts+ant.eliteAnts;
+  AntAlgorithm algorithm(graph, numberAnts);
+  AntAlgorithm algo(ant);
 }
