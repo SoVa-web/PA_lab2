@@ -4,26 +4,17 @@
 #include<iomanip>
 #include<vector>
 #include<cmath>
+#include<list>
 
 using namespace std;
 
 
 
-class Ant{
-public:
-//functions
- Ant(){};
 
-//variaties
-vector<int>way;
-int optL =0;;
-bool areYouElyte;
-double deltaTau =0;
-};
 
 class Algorithm{
  public:
- Algorithm(Ant ant, int number);
+ Algorithm( int number);
    void initMatrix();
    void initPheramons();
    void generDistances();
@@ -33,7 +24,7 @@ class Algorithm{
    void placingAnts();
    void algorithm();
    int probability(int i, vector<int> j);
-   double tau( int optL, bool elit);
+   double tau(  double optL, bool elit);
 
    
    //variaties 
@@ -42,20 +33,24 @@ int** distanceMatrix;
 double** pheramonsMatrix;
 double** visionMaxtrix;
 double minL;
+double* optL;
+double* deltaTau;
  int numberAnts;
- Ant* ants;
+ //Ant* ants;
  int* placeAnts;
+ bool* areYouElyte;
  vector<int>way0;
+ int eliteAnts = 10;
+ vector<vector<int>> way;
  double alpha = 3;//
  double beta = 2;//
  double evaporate = 0.7;//коефіцієнт випаровування
- double tauStart = 1;//початковий рівень феромону
- int eliteAnts = 10;
+ 
  int traditionalAnts = 35;
-const int iter = 10;
+ int iter = 1000;
 };
 
-Algorithm::Algorithm(Ant ant, int number){
+Algorithm::Algorithm( int number){
     numberNodes = number;
   initMatrix();
   generDistances();
@@ -64,27 +59,35 @@ Algorithm::Algorithm(Ant ant, int number){
   //output();
   numberAnts = eliteAnts+traditionalAnts;
   greedySearch();
-  ants = new Ant[numberAnts];
+  areYouElyte = new bool[numberAnts];
+  optL = new double[numberAnts];
+  deltaTau = new double[numberAnts];
  for(int i =0; i < numberAnts; i++){
-   if(numberAnts-eliteAnts)
-     ants[i].areYouElyte  = false;
+     deltaTau[i] =0;
+     optL[i]=0;
+   if(i < numberAnts-eliteAnts)
+     areYouElyte[i]  = false;
     else
-     ants[i].areYouElyte  = true;
+     areYouElyte[i]  = true;
+  }
+  for(int i =0; i < numberAnts; i++){
+      vector<int> path;
+    way.push_back(path);
   }
 }
 
 void Algorithm::algorithm(){
    for(int i =0; i< iter; i++){//time life
-      for(int j =0; j < numberAnts; j++){//cycle for ants
+      for(int j =0; j < numberAnts; j++){//ccoutycle for ants
            vector<int> nodes;
            bool visited[numberNodes];
            for(int k =0; k < numberNodes; k++){
               visited[k] = true;
            }
-            int next = 0;
+            int next = placeAnts[j];
             visited[next] = false;
-            ants[j].way.push_back(next);
-    while (ants[j].way.size()<numberNodes){
+            way[j].push_back(next);
+    while (way[j].size()<numberNodes){
         for(int k =0; k < numberNodes; k++){
             if(next != k && visited[k] ){
               nodes.push_back(k);
@@ -93,27 +96,32 @@ void Algorithm::algorithm(){
         int prob = probability(next, nodes);//next node
         next = prob;
         visited[next] = false;
-        ants[j].way.push_back(next);
-        ants[j].optL+=distanceMatrix[ants[j].way.size()-2][ants[j].way.size()-1];
+        way[j].push_back(next);
         nodes.clear();
     }
-    ants[j].optL+=distanceMatrix[ants[j].way.size()-1][0];
-    ants[j].way.push_back(ants[j].way[0]);
-      ants[j].deltaTau = tau( ants[j].optL, ants[j].areYouElyte);
+    way[j].push_back(way[j][0]);
+   /* for(int l =0; l < way[j].size(); l++){
+        cout<<way[j][l]<<"->";
+    }*/
+    for(int l=0; l < way[j].size()-1;l++){
+         optL[j]+=(distanceMatrix[way[j][l]][way[j][l+1]]);
+    }
+   // cout<<optL[j]<<endl;
+      deltaTau[j] = tau( optL[j], areYouElyte[j]);
       }//end cycle of  ants
-      int L = ants[0].optL;
+      int L = optL[0];
       int index = 0;
       for(int k =0; k < numberAnts; k++){
-          if(L>=ants[k].optL){
-              L=ants[k].optL;
+          if(L>=optL[k]){
+              L=optL[k];
               index = k;
           }
       }
-      way0 = ants[index].way;
+      way0 = way[index];
       minL = L;
       int sumTau = 0;
       for(int k =0; k < numberAnts; k++){
-          sumTau+=ants[k].deltaTau;
+          sumTau+=deltaTau[k];
       }
       for(int j =0; j <numberNodes; j++){
           for(int k =0; k < numberNodes; k++){
@@ -121,16 +129,18 @@ void Algorithm::algorithm(){
                  pheramonsMatrix[j][k] = (1-evaporate)*pheramonsMatrix[j][k]+sumTau;
              }
           }
+          
       }
       //оновлення параметрів
       for(int k =0; k < numberAnts; k++){
-           ants[k].way.clear();
+           way[k].clear();
+           optL[k] = 0;
       }
    }
    cout<<"minLFinl: "<<minL;
 }
 
-double Algorithm::tau( int optL, bool elit ){
+double Algorithm::tau( double optL, bool elit ){
     double delta =0;
     if(elit){
         delta = (2*this->minL)/optL;
@@ -143,13 +153,14 @@ double Algorithm::tau( int optL, bool elit ){
 int Algorithm::probability(int i, vector<int> j){
  double sum = 0;
  for(int k =0; k < j.size(); k++){
-    sum+=pow(pheramonsMatrix[i][j[k]], alpha )*pow(visionMaxtrix[i][j[k]], beta);
+    sum+=(pow(pheramonsMatrix[i][j[k]], alpha )*pow(visionMaxtrix[i][j[k]], beta));
  }
  vector<double> prob;
  for(int k =0; k < j.size(); k++){
      double a = (pow(pheramonsMatrix[i][j[k]], alpha )*pow(visionMaxtrix[i][j[k]], beta))/sum;
-    prob.push_back(a);
+    prob.push_back(a);//cout<<"prob"<<a<<endl;
  }
+ //cout<<"next"<<endl;
  double b = prob[0];
  int maximum = 0; 
  for(int k =0; k < prob.size(); k++){
@@ -165,7 +176,6 @@ void Algorithm::placingAnts(){
     placeAnts = new int[eliteAnts+traditionalAnts];
     for(int i =0; i < numberAnts; i++){
         placeAnts[i] = rand()%numberNodes;
-        cout<<placeAnts[i]<<" ";
     }
 }
 
@@ -271,16 +281,11 @@ void Algorithm::greedySearch(){
     minL+=distanceMatrix[way0.size()-1][0];
     way0.push_back(way0[0]);
     cout<<"Lmin"<<minL<<endl;
-    cout<<"Way: ";
-    for(int i =0 ;i < way0.size(); i++){
-        cout<<way0[i]<<"-->";
-    }
 }
 
 
 int main(){
-  Ant ant;
-  Algorithm algo(ant, 300);
+  Algorithm algo(200);
   algo.placingAnts();
   algo.algorithm();
 }
